@@ -1,7 +1,5 @@
 /*
     Todo 
-        - Deal with the colours of the pieces correctly
-            (Need to refactor the match statements, as they don't work how I expected)
         - Test coverage
         - Make basic CLI
             - Code to handle game state
@@ -30,12 +28,13 @@ struct Piece {
     kind: Kind
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum Colour {
     White, 
     Black
 }
 
+#[derive(PartialEq)]
 enum Kind {
     Pawn,
     Knight
@@ -167,42 +166,38 @@ impl Board {
             .filter(|mov| self.is_legal_knight_move(mov, &piece.colour))
             .collect()
     }
-    // This should check the colour of the mover
     fn is_legal_pawn_move(&self, mov: Move, mov_type: MoveType, piece_colour: &Colour) -> bool {
-        match self.board[mov.from_square as usize] {
+        match &self.board[mov.from_square as usize] {
             SquareVal::Piece(Piece {
-                colour: piece_colour,
-                kind: Kind::Pawn
-            }) => (),
+                colour,
+                kind
+            }) => { if !(colour == piece_colour && kind == &Kind::Pawn) { return false }},
             _ => { return false }
         };
         match self.board[mov.to_square as usize] {
             SquareVal::Invalid => false,
             SquareVal::Empty => mov_type == MoveType::MoveOnly,
             SquareVal::Piece(Piece {
-                colour: piece_colour,
+                colour,
                 kind: _
-            }) => false,
-            SquareVal::Piece(_) => mov_type == MoveType::Attack
+            }) => colour != *piece_colour && mov_type == MoveType::Attack,
         }
     }
-    // This should check the colour of the mover
     fn is_legal_knight_move(&self, mov: &Move, piece_colour: &Colour) -> bool {
-        match self.board[mov.from_square as usize] {
+        match &self.board[mov.from_square as usize] {
             SquareVal::Piece(Piece {
-                colour: piece_colour,
-                kind: Kind::Knight
-            }) => (),
+                colour,
+                kind
+            }) => { if !(colour == piece_colour && kind == &Kind::Knight) { return false } },
             _ => { return false }
         };
         match self.board[mov.to_square as usize] {
             SquareVal::Invalid => false,
             SquareVal::Empty => true,
             SquareVal::Piece(Piece {
-                colour: piece_colour,
+                colour,
                 kind: _
-            }) => false,
-            SquareVal::Piece(_) => true
+            }) => colour != *piece_colour,
         }
     }
 }
