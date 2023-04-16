@@ -6,9 +6,10 @@
             - Code to handle user inputs
             - Code to display the board in the command line
         - Make basic board valuations and check one move deep
+        - split the project out into game functions library and a CLI library
+        - Develop the search and evaluation further
         - Make a basic website to play versus the AI only
         - Make the website so you can play versus others
-        - Develop the search and evaluation further
 */
 
 use rand::seq::SliceRandom;
@@ -90,7 +91,7 @@ macro_rules! BlackKnight {
 
 fn main() {
     let board = Board::new();
-    let best_move = board.get_best_move();
+    let best_move = board.get_best_move(Colour::Black);
     match best_move {
       Some(mov) => println!("The best move is from {} to {}", mov.from_square, mov.to_square),
       None => println!("There are no legal moves available")  
@@ -112,15 +113,15 @@ impl Board {
                     SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid]
         }
     }
-    fn get_best_move(&self) -> Option<Move> {
-        let all_moves = self.get_all_legal_moves();
+    fn get_best_move(&self, colour: Colour) -> Option<Move> {
+        let all_moves = self.get_all_legal_moves(colour);
         let best_move = all_moves.choose(&mut rand::thread_rng());
         match best_move {
             Some(mov) => Some(*mov),
             None => None
         }
     }
-    fn get_all_legal_moves(&self) -> Vec<Move> {
+    fn get_all_legal_moves(&self, colour: Colour) -> Vec<Move> {
         self.board
             .iter()
             .enumerate()
@@ -129,7 +130,13 @@ impl Board {
                 if index > 62 { panic!("Attempted to evaluate a board that was too large") };
                 let u8_index = index as u8;
                 match square_val {
-                    SquareVal::Piece(piece) => self.get_piece_moves(piece, u8_index),
+                    SquareVal::Piece(piece) => {
+                        if piece.colour == colour {
+                            self.get_piece_moves(piece, u8_index)
+                        } else {
+                            vec![]
+                        }
+                    },
                     _ => vec![]
                 }
             })
