@@ -16,7 +16,7 @@
 use rand::seq::SliceRandom;
 use std::{
     thread,
-    io::{ stdin, stdout, Write }
+    io::{ stdin, stdout, Write }, fmt
 };
 
 struct Board {
@@ -253,8 +253,45 @@ impl Board {
             }) => colour != *piece_colour,
         }
     }
+    fn execute_moves(&mut self, mov_pair: MovePair) {
+        if mov_pair.white.to_square == mov_pair.black.to_square {
+            self.execute_moves_to_same_square(mov_pair);
+        } else {
+            self.execute_moves_to_different_squares(mov_pair);
+        }
+    }
+    fn execute_moves_to_different_squares(&mut self, mov_pair: MovePair) {
+        let white_piece = self.board[mov_pair.white.from_square as usize];
+        let black_piece = self.board[mov_pair.black.from_square as usize]; 
+        self.board[mov_pair.white.to_square as usize] = white_piece;
+        self.board[mov_pair.black.to_square as usize] = black_piece;
+    }
+    fn execute_moves_to_same_square(&mut self, mov_pair: MovePair) {
+        let SquareVal::Piece(white_piece) = self.board[mov_pair.white.from_square as usize] else { panic!() };
+        let SquareVal::Piece(black_piece) = self.board[mov_pair.black.from_square as usize] else { panic!() }; 
+        if white_piece.kind == black_piece.kind {
+            self.board[mov_pair.white.from_square as usize] = SquareVal::Empty;
+            self.board[mov_pair.black.from_square as usize] = SquareVal::Empty;
+            self.board[mov_pair.white.to_square as usize] = SquareVal::Empty;
+        } else {
+            let winner = if white_piece.kind == Kind::Knight { white_piece } else { black_piece };
+            self.board[mov_pair.white.from_square as usize] = SquareVal::Empty;
+            self.board[mov_pair.black.from_square as usize] = SquareVal::Empty;
+            self.board[mov_pair.white.to_square as usize] = SquareVal::Piece(winner);
+        }
+    }
 } 
 
+impl fmt::Display for Colour {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Colour::White => write!(f, "White"),
+            Colour::Black => write!(f, "Black")
+        }
+    }
+}
+
+// check this a legal move
 fn get_user_move() -> Move {
     let Some(from_square) = get_square("Choose which square to move from (using A1-E5") else {
         println!("Invalid square entered. Please try again.");
