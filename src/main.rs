@@ -1,18 +1,23 @@
 /*
     Todo 
-        - Test coverage
         - Make basic CLI
             - Code to handle game state
             - Code to handle user inputs
             - Code to display the board in the command line
         - Make basic board valuations and check one move deep
-        - split the project out into game functions library and a CLI library
+        - Test coverage
+        - Refactor generally, but specifically to use better error handling (especially dealing with user input)
+        - Split the project out into game functions library and a CLI library
         - Develop the search and evaluation further
         - Make a basic website to play versus the AI only
         - Make the website so you can play versus others
 */
 
 use rand::seq::SliceRandom;
+use std::{
+    thread,
+    io::{ stdin, stdout, Write }
+};
 
 struct Board {
     board: [SquareVal; 63]
@@ -53,6 +58,17 @@ enum MoveType {
     MoveOnly
 }
 
+struct MovePair {
+    white: Move,
+    black: Move
+}
+
+enum GameState {
+    Ongoing,
+    Draw,
+    Win(Colour)
+}
+
 macro_rules! WhitePawn {
     () => {
         SquareVal::Piece(Piece {
@@ -89,14 +105,44 @@ macro_rules! BlackKnight {
     };
 }
 
+/*
+    Todo:
+        - Write the code to execute move pairs
+        - Write the code to check if the game is over
+        - Write the code to display the board
+*/
 fn main() {
-    let board = Board::new();
-    let best_move = board.get_best_move(Colour::Black);
-    match best_move {
-      Some(mov) => println!("The best move is from {} to {}", mov.from_square, mov.to_square),
-      None => println!("There are no legal moves available")  
+    let mut board = Board::new();
+    loop {
+        stdout().flush();
+        println!("{}", board);
+        let user_move = thread::spawn(|| {
+            get_user_move()
+        });
+        let computer_move = thread::spawn(|| {
+            board.get_best_move(Colour::Black).unwrap()
+        });
+        let move_pair = MovePair {
+            white: user_move.join().unwrap(),
+            black: computer_move.join().unwrap()
+        };
+        board.execute_moves(move_pair);
+        let result = board.get_game_state();
+        match result {
+            GameState::Draw => {
+                println!("{}", board);
+                println!("Its a draw!");
+                break;
+            },
+            GameState::Win(colour) => {
+                println!("{}", board);
+                println!("{} wins!", colour);
+                break;
+            }
+            GameState::Ongoing => (),    
+        };
     }
-       
+    println!("Thanks for playing");
 }
 
 impl Board {
@@ -206,5 +252,62 @@ impl Board {
                 kind: _
             }) => colour != *piece_colour,
         }
+    }
+} 
+
+fn get_user_move() -> Move {
+    let Some(from_square) = get_square("Choose which square to move from (using A1-E5") else {
+        println!("Invalid square entered. Please try again.");
+        return get_user_move();
+    };
+    let Some(to_square) = get_square("Choose which square to move to (using A1-E5)") else {
+        println!("Invalid square entered. Please try again.");
+        return get_user_move();
+    };
+    return Move {
+        from_square,
+        to_square
+    }
+}
+
+fn get_square(prompt: &str) -> Option<u8> {
+    let mut s = String::new();
+    println!("{}", prompt);
+    let result = stdin().read_line(&mut s);
+    match result {
+        Err(_) => { return None },
+        _ => ()
+    };
+    let mov = try_get_u8_from_algebraic(s);
+    match mov {
+        Some(val) => Some(val),
+        None => None
+    }
+}
+
+fn try_get_u8_from_algebraic(s: String) -> Option<u8> {
+    let mut chars = s.chars();
+    let row_string = chars.next().unwrap(); 
+    let Some(row_val) = try_get_row(row_string) else { return None };
+    let col_string = chars.next().unwrap();
+    let Some(col_val) = try_get_col(col_string) else { return None };
+    Some(row_val - (7 * (col_val - 1)))
+}
+
+fn try_get_row(row: char) -> Option<u8> {
+    match row.to_string().to_lowercase().as_str() {
+        "a" => Some(43),
+        "b" => Some(44),
+        "c" => Some(45),
+        "d" => Some(46),
+        "e" => Some(47),
+        _ => None
+    }
+}
+
+fn try_get_col(col: char) -> Option<u8> {
+    match col.to_string().parse::<u8>() {
+        Ok(num) => Some(num),
+        Err(_) => None
     }
 }
