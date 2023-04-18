@@ -16,7 +16,8 @@
 use rand::seq::SliceRandom;
 use std::{
     thread,
-    io::{ stdin, stdout, Write }, fmt
+    io::{ stdin, stdout, Write }, 
+    fmt
 };
 
 struct Board {
@@ -107,8 +108,6 @@ macro_rules! BlackKnight {
 
 /*
     Todo:
-        - Write the code to execute move pairs
-        - Write the code to check if the game is over
         - Write the code to display the board
 */
 fn main() {
@@ -280,6 +279,41 @@ impl Board {
             self.board[mov_pair.white.to_square as usize] = SquareVal::Piece(winner);
         }
     }
+    fn get_game_state(&self) -> GameState {
+        if self.is_game_drawn() {
+            GameState::Draw
+        } else if let Some(colour) = self.try_get_winner() {
+            GameState::Win(colour)
+        } else {
+            GameState::Ongoing
+        }
+    }
+    fn is_game_drawn(&self) -> bool {
+        self.both_sides_no_footmen() || (self.has_no_moves(&Colour::Black) && self.has_no_moves(&Colour::Black))
+    }
+    fn both_sides_no_footmen(&self) -> bool {
+        self.has_no_footmen(Colour::White) && self.has_no_footmen(Colour::Black)
+    }
+    fn has_no_footmen(&self, colour: Colour) -> bool {
+        for square in self.board.iter() {
+            if is_right_colour_footman(square, &colour) {
+                return true;
+            } 
+        }
+        false
+    }
+    fn has_no_moves(&self, colour: &Colour) -> bool {
+        self.get_all_legal_moves(*colour).len() == 0
+    }
+    fn try_get_winner(&self) -> Option<Colour> {
+        if self.has_no_footmen(Colour::White) {
+            Some(Colour::Black)
+        } else if self.has_no_footmen(Colour::Black) {
+            Some(Colour::White) 
+        } else {
+            None
+        }
+    }
 } 
 
 impl fmt::Display for Colour {
@@ -288,6 +322,13 @@ impl fmt::Display for Colour {
             Colour::White => write!(f, "White"),
             Colour::Black => write!(f, "Black")
         }
+    }
+}
+
+fn is_right_colour_footman(square: &SquareVal, colour: &Colour) -> bool {
+    match square {
+        SquareVal::Piece(piece) => piece.kind == Kind::Pawn && piece.colour == *colour,
+        _ => false
     }
 }
 
