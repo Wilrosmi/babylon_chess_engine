@@ -110,8 +110,8 @@ fn main() {
     loop {
         stdout().flush().unwrap();
         println!("{}", board);
-        let user_move = thread::spawn(|| {
-            get_user_move()
+        let user_move = thread::spawn(move || {
+            get_user_move(&board)
         });
         let computer_move = thread::spawn(move || {
             board.get_best_move(Colour::Black).unwrap()
@@ -190,15 +190,14 @@ impl Board {
         }
     }
     fn get_pawn_moves(&self, piece: &Piece, index: u8) -> Vec<Move> {
-        // Note - Doesn't implement en passant yet
         let mut legal_moves: Vec<Move> = vec![];
-        if self.is_legal_pawn_move(Move {from_square: index.clone(), to_square: index + 7 }, MoveType::MoveOnly, &piece.colour) { 
+        if self.is_legal_pawn_move(&Move {from_square: index.clone(), to_square: index + 7 }, MoveType::MoveOnly, &piece.colour) { 
             legal_moves.push(Move { from_square: index, to_square: index + 7 }) 
         };
-        if self.is_legal_pawn_move(Move {from_square: index.clone(), to_square: index + 6 }, MoveType::Attack, &piece.colour) { 
+        if self.is_legal_pawn_move(&Move {from_square: index.clone(), to_square: index + 6 }, MoveType::Attack, &piece.colour) { 
             legal_moves.push(Move { from_square: index, to_square: index + 6 }) 
         };
-        if self.is_legal_pawn_move(Move {from_square: index.clone(), to_square: index + 8 }, MoveType::Attack, &piece.colour) { 
+        if self.is_legal_pawn_move(&Move {from_square: index.clone(), to_square: index + 8 }, MoveType::Attack, &piece.colour) { 
             legal_moves.push(Move { from_square: index, to_square: index + 8 }) 
         };
         legal_moves
@@ -213,7 +212,7 @@ impl Board {
             .filter(|mov| self.is_legal_knight_move(mov, &piece.colour))
             .collect()
     }
-    fn is_legal_pawn_move(&self, mov: Move, mov_type: MoveType, piece_colour: &Colour) -> bool {
+    fn is_legal_pawn_move(&self, mov: &Move, mov_type: MoveType, piece_colour: &Colour) -> bool {
         match &self.board[mov.from_square as usize] {
             SquareVal::Piece(Piece {
                 colour,
@@ -257,10 +256,10 @@ impl Board {
     fn execute_moves_to_different_squares(&mut self, mov_pair: MovePair) {
         let white_piece = self.board[mov_pair.white.from_square as usize];
         let black_piece = self.board[mov_pair.black.from_square as usize]; 
-        self.board[mov_pair.white.to_square as usize] = white_piece;
-        self.board[mov_pair.black.to_square as usize] = black_piece;
         self.board[mov_pair.white.from_square as usize] = SquareVal::Empty;
         self.board[mov_pair.black.from_square as usize] = SquareVal::Empty;
+        self.board[mov_pair.white.to_square as usize] = piece_to_place(white_piece, &Colour::White, mov_pair.white.to_square);
+        self.board[mov_pair.black.to_square as usize] = piece_to_place(black_piece, &Colour::Black, mov_pair.black.to_square);
     }
     fn execute_moves_to_same_square(&mut self, mov_pair: MovePair) {
         let SquareVal::Piece(white_piece) = self.board[mov_pair.white.from_square as usize] else { panic!() };
@@ -310,6 +309,22 @@ impl Board {
         } else {
             None
         }
+    }
+    fn is_legal_move(&self, mov: &Move, colour: &Colour) -> bool {
+        let SquareVal::Piece(piece) = self.board[mov.from_square as usize] else {
+            return false;
+        };
+        if is_invalid_movement(mov, &piece) {
+            return false;
+        };
+        match piece.kind {
+            Kind::Knight => self.is_legal_knight_move(mov, colour),
+            Kind::Pawn => {
+                let mov_type = get_move_type(mov);
+                self.is_legal_pawn_move(mov, mov_type, colour)
+            }
+        }
+         
     }
 } 
 
@@ -365,6 +380,51 @@ impl fmt::Display for Piece {
     }
 }
 
+fn piece_to_place(square_val: SquareVal, colour: &Colour, to_square: u8) -> SquareVal {
+    // This should never be anything other than a piece. Todo - make that relationship explicit.
+    let SquareVal::Piece(piece) = square_val else { panic!() };
+    let end_row = match *colour {
+        Colour::White => [15, 16, 17, 18, 19],
+        Colour::Black => [43, 44, 45, 46, 47]
+    };
+    if piece.kind == Kind::Pawn && end_row.contains(&(to_square as isize)) {
+        SquareVal::Piece(Piece {
+            colour: *colour,
+            kind: Kind::Knight
+        })
+    } else {
+        square_val
+    }
+}
+
+fn is_invalid_movement(mov: &Move, piece: &Piece) -> bool {
+    match piece.kind {
+        Kind::Knight => is_invalid_knight_movement(mov),
+        Kind::Pawn => is_invalid_pawn_movement(mov, &piece.colour)
+    }
+}
+
+fn is_invalid_knight_movement(mov: &Move) -> bool {
+    [13, 15, -13, -15, 5, 9, -5, -9].contains(&((mov.to_square - mov.from_square) as isize))
+}
+
+fn is_invalid_pawn_movement(mov: &Move, colour: &Colour) -> bool {
+    let valid_moves = if *colour == Colour::White {
+        [6, 7, 8]
+    } else {
+        [-6, -7, -8]
+    };
+    valid_moves.contains(&((mov.to_square - mov.from_square) as isize))
+}
+
+fn get_move_type(mov: &Move) -> MoveType {
+    if mov.to_square - mov.from_square == 7 {
+        MoveType::MoveOnly
+    } else {
+        MoveType::Attack
+    }
+}
+
 fn grid_to_one_d(row: usize, col: usize) -> usize {
     15 + (7 * row) + (col)
 }
@@ -376,19 +436,24 @@ fn is_right_colour_footman(square: &SquareVal, colour: &Colour) -> bool {
     }
 }
 
-// check this a legal move
-fn get_user_move() -> Move {
+fn get_user_move(board: &Board) -> Move {
     let Some(from_square) = get_square("Choose which square to move from (using A1-E5)") else {
         println!("Invalid square entered. Please try again.");
-        return get_user_move();
+        return get_user_move(board);
     };
     let Some(to_square) = get_square("Choose which square to move to (using A1-E5)") else {
         println!("Invalid square entered. Please try again.");
-        return get_user_move();
+        return get_user_move(board);
     };
-    return Move {
+    let mov =  Move {
         from_square,
         to_square
+    };
+    if board.is_legal_move(&mov, &Colour::White) {
+        mov
+    } else {
+        println!("Invalid square entered. Please try again.");
+        get_user_move(board)
     }
 }
 
