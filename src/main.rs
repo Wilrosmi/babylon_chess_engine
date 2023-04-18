@@ -1,10 +1,6 @@
 /*
     Todo 
-        - Make basic CLI
-            - Code to handle game state
-            - Code to handle user inputs
-            - Code to display the board in the command line
-        - Make basic board valuations and check one move deep
+        - Make basic eval and search
         - Test coverage
         - Refactor generally, but specifically to use better error handling (especially dealing with user input)
         - Split the project out into game functions library and a CLI library
@@ -326,24 +322,19 @@ impl fmt::Display for Colour {
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        
-        write!(f, "╔════════╗").unwrap();
-        
+                
         let board_height = 5;
         let board_width = 5;
 
         for row in 0..board_height {
-            writeln!(f).unwrap();
-            write!(f, "║").unwrap();            
             for col in 0..board_width {
                 let one_d_coordinate = grid_to_one_d(row, col);
                 let square_val = self.board[one_d_coordinate];
                 write!(f, "{}", square_val).unwrap();
             }
-            write!(f, "║").unwrap();
+            writeln!(f).unwrap();
         }
-
-        write!(f, " ╚════════╝")
+        writeln!(f)
     }
 }
 
@@ -351,7 +342,7 @@ impl fmt::Display for SquareVal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             SquareVal::Piece(piece) => write!(f, "{}", piece),
-            SquareVal::Empty => write!(f, "▓"),
+            SquareVal::Empty => write!(f, " "),
             SquareVal::Invalid => write!(f, "")
         }
     }
@@ -373,7 +364,7 @@ impl fmt::Display for Piece {
 }
 
 fn grid_to_one_d(row: usize, col: usize) -> usize {
-    8 + (7 * row) + (col)
+    15 + (7 * row) + (col)
 }
 
 fn is_right_colour_footman(square: &SquareVal, colour: &Colour) -> bool {
@@ -385,7 +376,7 @@ fn is_right_colour_footman(square: &SquareVal, colour: &Colour) -> bool {
 
 // check this a legal move
 fn get_user_move() -> Move {
-    let Some(from_square) = get_square("Choose which square to move from (using A1-E5") else {
+    let Some(from_square) = get_square("Choose which square to move from (using A1-E5)") else {
         println!("Invalid square entered. Please try again.");
         return get_user_move();
     };
