@@ -286,7 +286,7 @@ impl Board {
         }
     }
     fn is_game_drawn(&self) -> bool {
-        self.both_sides_no_footmen() || (self.has_no_moves(&Colour::Black) && self.has_no_moves(&Colour::Black))
+        self.both_sides_no_footmen() || self.has_no_moves(&Colour::Black) || self.has_no_moves(&Colour::Black)
     }
     fn both_sides_no_footmen(&self) -> bool {
         self.has_no_footmen(Colour::White) && self.has_no_footmen(Colour::Black)
@@ -294,10 +294,10 @@ impl Board {
     fn has_no_footmen(&self, colour: Colour) -> bool {
         for square in self.board.iter() {
             if is_right_colour_footman(square, &colour) {
-                return true;
+                return false;
             } 
         }
-        false
+        true
     }
     fn has_no_moves(&self, colour: &Colour) -> bool {
         self.get_all_legal_moves(*colour).len() == 0
