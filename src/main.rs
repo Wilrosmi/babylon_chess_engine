@@ -20,16 +20,19 @@ use std::{
     fmt
 };
 
+#[derive(Copy, Clone)]
 struct Board {
     board: [SquareVal; 63]
 }
 
+#[derive(Copy, Clone)]
 enum SquareVal {
     Invalid,
     Empty, 
     Piece(Piece),
 }
 
+#[derive(Copy, Clone)]
 struct Piece {
     colour: Colour,
     kind: Kind
@@ -41,7 +44,7 @@ enum Colour {
     Black
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 enum Kind {
     Pawn,
     Knight
@@ -109,12 +112,12 @@ macro_rules! BlackKnight {
 fn main() {
     let mut board = Board::new();
     loop {
-        stdout().flush();
+        stdout().flush().unwrap();
         println!("{}", board);
         let user_move = thread::spawn(|| {
             get_user_move()
         });
-        let computer_move = thread::spawn(|| {
+        let computer_move = thread::spawn(move || {
             board.get_best_move(Colour::Black).unwrap()
         });
         let move_pair = MovePair {
@@ -324,20 +327,20 @@ impl fmt::Display for Colour {
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         
-        write!(f, "╔════════╗");
+        write!(f, "╔════════╗").unwrap();
         
         let board_height = 5;
         let board_width = 5;
 
         for row in 0..board_height {
-            writeln!(f);
-            write!(f, "║");            
+            writeln!(f).unwrap();
+            write!(f, "║").unwrap();            
             for col in 0..board_width {
                 let one_d_coordinate = grid_to_one_d(row, col);
                 let square_val = self.board[one_d_coordinate];
-                write!(f, "{}", square_val);
+                write!(f, "{}", square_val).unwrap();
             }
-            write!(f, "║");
+            write!(f, "║").unwrap();
         }
 
         write!(f, " ╚════════╝")
