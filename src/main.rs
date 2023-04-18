@@ -258,8 +258,8 @@ impl Board {
         let black_piece = self.board[mov_pair.black.from_square as usize]; 
         self.board[mov_pair.white.from_square as usize] = SquareVal::Empty;
         self.board[mov_pair.black.from_square as usize] = SquareVal::Empty;
-        self.board[mov_pair.white.to_square as usize] = white_piece;
-        self.board[mov_pair.black.to_square as usize] = black_piece;
+        self.board[mov_pair.white.to_square as usize] = piece_to_place(white_piece, &Colour::White, mov_pair.white.to_square);
+        self.board[mov_pair.black.to_square as usize] = piece_to_place(black_piece, &Colour::Black, mov_pair.black.to_square);
     }
     fn execute_moves_to_same_square(&mut self, mov_pair: MovePair) {
         let SquareVal::Piece(white_piece) = self.board[mov_pair.white.from_square as usize] else { panic!() };
@@ -377,6 +377,23 @@ impl fmt::Display for Piece {
                 Kind::Pawn => write!(f, "♙")
             }
         }
+    }
+}
+
+fn piece_to_place(square_val: SquareVal, colour: &Colour, to_square: u8) -> SquareVal {
+    // This should never be anything other than a piece. Todo - make that relationship explicit.
+    let SquareVal::Piece(piece) = square_val else { panic!() };
+    let end_row = match *colour {
+        Colour::White => [15, 16, 17, 18, 19],
+        Colour::Black => [43, 44, 45, 46, 47]
+    };
+    if piece.kind == Kind::Pawn && end_row.contains(&(to_square as isize)) {
+        SquareVal::Piece(Piece {
+            colour: *colour,
+            kind: Kind::Knight
+        })
+    } else {
+        square_val
     }
 }
 
