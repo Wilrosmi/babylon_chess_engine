@@ -259,6 +259,8 @@ impl Board {
         let black_piece = self.board[mov_pair.black.from_square as usize]; 
         self.board[mov_pair.white.to_square as usize] = white_piece;
         self.board[mov_pair.black.to_square as usize] = black_piece;
+        self.board[mov_pair.white.from_square as usize] = SquareVal::Empty;
+        self.board[mov_pair.black.from_square as usize] = SquareVal::Empty;
     }
     fn execute_moves_to_same_square(&mut self, mov_pair: MovePair) {
         let SquareVal::Piece(white_piece) = self.board[mov_pair.white.from_square as usize] else { panic!() };
