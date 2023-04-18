@@ -190,7 +190,6 @@ impl Board {
         }
     }
     fn get_pawn_moves(&self, piece: &Piece, index: u8) -> Vec<Move> {
-        // Note - Doesn't implement en passant yet
         let mut legal_moves: Vec<Move> = vec![];
         if self.is_legal_pawn_move(Move {from_square: index.clone(), to_square: index + 7 }, MoveType::MoveOnly, &piece.colour) { 
             legal_moves.push(Move { from_square: index, to_square: index + 7 }) 
@@ -257,10 +256,10 @@ impl Board {
     fn execute_moves_to_different_squares(&mut self, mov_pair: MovePair) {
         let white_piece = self.board[mov_pair.white.from_square as usize];
         let black_piece = self.board[mov_pair.black.from_square as usize]; 
-        self.board[mov_pair.white.to_square as usize] = white_piece;
-        self.board[mov_pair.black.to_square as usize] = black_piece;
         self.board[mov_pair.white.from_square as usize] = SquareVal::Empty;
         self.board[mov_pair.black.from_square as usize] = SquareVal::Empty;
+        self.board[mov_pair.white.to_square as usize] = white_piece;
+        self.board[mov_pair.black.to_square as usize] = black_piece;
     }
     fn execute_moves_to_same_square(&mut self, mov_pair: MovePair) {
         let SquareVal::Piece(white_piece) = self.board[mov_pair.white.from_square as usize] else { panic!() };
