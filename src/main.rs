@@ -106,10 +106,6 @@ macro_rules! BlackKnight {
     };
 }
 
-/*
-    Todo:
-        - Write the code to display the board
-*/
 fn main() {
     let mut board = Board::new();
     loop {
@@ -323,6 +319,58 @@ impl fmt::Display for Colour {
             Colour::Black => write!(f, "Black")
         }
     }
+}
+
+impl fmt::Display for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        
+        write!(f, "╔════════╗");
+        
+        let board_height = 5;
+        let board_width = 5;
+
+        for row in 0..board_height {
+            writeln!(f);
+            write!(f, "║");            
+            for col in 0..board_width {
+                let one_d_coordinate = grid_to_one_d(row, col);
+                let square_val = self.board[one_d_coordinate];
+                write!(f, "{}", square_val);
+            }
+            write!(f, "║");
+        }
+
+        write!(f, " ╚════════╝")
+    }
+}
+
+impl fmt::Display for SquareVal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SquareVal::Piece(piece) => write!(f, "{}", piece),
+            SquareVal::Empty => write!(f, "▓"),
+            SquareVal::Invalid => write!(f, "")
+        }
+    }
+}
+
+impl fmt::Display for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.colour {
+            Colour::White => match self.kind {
+                Kind::Knight => write!(f, "♞"),
+                Kind::Pawn => write!(f, "♟")
+            },
+            Colour::Black => match self.kind {
+                Kind::Knight => write!(f, "♘"),
+                Kind::Pawn => write!(f, "♙")
+            }
+        }
+    }
+}
+
+fn grid_to_one_d(row: usize, col: usize) -> usize {
+    8 + (7 * row) + (col)
 }
 
 fn is_right_colour_footman(square: &SquareVal, colour: &Colour) -> bool {
