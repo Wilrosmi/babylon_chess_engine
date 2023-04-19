@@ -114,7 +114,7 @@ fn main() {
             get_user_move(&board)
         });
         let computer_move = thread::spawn(move || {
-            board.get_best_move(Colour::Black).unwrap()
+            board.get_move(Colour::Black).unwrap()
         });
         let move_pair = MovePair {
             white: user_move.join().unwrap(),
@@ -153,13 +153,27 @@ impl Board {
                     SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid, SquareVal::Invalid]
         }
     }
-    fn get_best_move(&self, colour: Colour) -> Option<Move> {
+    fn get_move(&self, colour: Colour) -> Option<Move> {
         let all_moves = self.get_all_legal_moves(colour);
         let best_move = all_moves.choose(&mut rand::thread_rng());
         match best_move {
             Some(mov) => Some(*mov),
             None => None
         }
+        /*
+            steps for finding one move deep nash eq
+
+            get all legal moves for computer
+            get all legal moves for opposition
+            get the board that occurs for every move pair
+            assign a value to each board from our opponents perspective, using some valuation function
+            assign s/i as the probability for each choice i of all the choices 0..n-1 we have available. n has prob 1 - SUM(s/i for all i).
+            calculate the expected value to our opponent of each of their moves in terms of the n-1 prob. varaibles. This is n equations.
+            set each of these equal to some variable x, as in nash eq. they must all have the same expected value.
+            this is now a n-variable, n-equation simultaneuos equation problem.
+            solve the set of equations to get the probability distribution over our move choices.
+            choose a move according to that probability distribution.  
+        */
     }
     fn get_all_legal_moves(&self, colour: Colour) -> Vec<Move> {
         self.board
