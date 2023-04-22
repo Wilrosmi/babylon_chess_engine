@@ -13,7 +13,7 @@ use rand::seq::SliceRandom;
 use std::{
     thread,
     io::{ stdin, stdout, Write }, 
-    fmt
+    fmt, ops::Neg
 };
 
 #[derive(Copy, Clone)]
@@ -105,6 +105,42 @@ macro_rules! BlackKnight {
     };
 }
 
+const PAWN_VALUES_WHITE: [f64; 63] = [
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 1.2, 1.4, 1.2, 1.0, 0.0,
+    0.0, 1.2, 1.4, 1.6, 1.4, 1.2, 0.0,
+    0.0, 1.4, 1.6, 1.8, 1.6, 1.4, 0.0,
+    0.0, 1.6, 1.8, 2.0, 1.8, 1.6, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+];
+
+const PAWN_VALUES_BLACK: [f64; 63] = [
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 1.6, 1.8, 2.0, 1.8, 1.6, 0.0,
+    0.0, 1.4, 1.6, 1.8, 1.6, 1.4, 0.0,
+    0.0, 1.2, 1.4, 1.6, 1.4, 1.2, 0.0,
+    0.0, 1.0, 1.2, 1.4, 1.2, 1.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+];
+
+const KNIGHT_VALUES: [f64; 63] = [
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 3.0, 3.2, 3.4, 3.2, 3.0, 0.0,
+    0.0, 3.2, 3.4, 3.6, 3.4, 3.2, 0.0,
+    0.0, 3.4, 3.6, 3.8, 3.6, 3.4, 0.0,
+    0.0, 3.2, 3.4, 3.6, 3.4, 3.2, 0.0,
+    0.0, 3.0, 3.2, 3.4, 3.2, 3.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+]; 
+
 fn main() {
     let mut board = Board::new();
     loop {
@@ -154,17 +190,31 @@ impl Board {
         }
     }
     fn get_move(&self, colour: Colour) -> Option<Move> {
-        let all_moves = self.get_all_legal_moves(colour);
-        let best_move = all_moves.choose(&mut rand::thread_rng());
-        match best_move {
-            Some(mov) => Some(*mov),
-            None => None
-        }
+        // let all_cmoves = self.get_all_legal_moves(colour);
+        // let best_move = all_moves.choose(&mut rand::thread_rng());
+        // match best_move {
+        //     Some(mov) => Some(*mov),
+        //     None => None
+        // }
+        let all_our_moves = self.get_all_legal_moves(colour);
+        let all_opponent_moves = self.get_all_legal_moves(-colour);
+        let all_possible_board_values = 
+            all_our_moves
+            .iter()
+            .map(|our_move| self.get_boards_possible_for_move(our_move, &colour, &all_opponent_moves))
+            .map(|all_possible_move_outcomes| {
+                all_possible_move_outcomes
+                    .iter()
+                    .map(|board| board.get_value(&-colour))
+                    .collect()    
+            })
+            .collect();
+                        
         /*
             steps for finding one move deep nash eq
 
-            get all legal moves for computer
-            get all legal moves for opposition
+            * get all legal moves for computer
+            * get all legal moves for opposition
             get the board that occurs for every move pair
             assign a value to each board from our opponents perspective, using some valuation function
             assign s/i as the probability for each choice i of all the choices 0..n-1 we have available. n has prob 1 - SUM(s/i for all i).
@@ -340,6 +390,42 @@ impl Board {
         }
          
     }
+    fn get_boards_possible_for_move(&self, our_move: &Move, our_colour: &Colour, all_opponent_moves: &Vec<Move>) -> Vec<Board> { 
+        all_opponent_moves
+            .iter()
+            .map(|opp_move| {
+                let white_move = match *our_colour {
+                    Colour::White => our_move,
+                    Colour::Black => opp_move
+                };
+                let black_move = match *our_colour {
+                    Colour::White => opp_move,
+                    Colour::Black => our_move
+                };
+                let mov_pair = MovePair {
+                    white: *white_move,
+                    black: *black_move
+                };
+                let mut new_board = self.clone();
+                new_board.execute_moves(mov_pair);
+                new_board
+            })
+            .collect()                
+    }
+    fn get_value(&self, colour: &Colour) -> i16 {
+        let our_pawn_board = match colour {
+            &Colour::White => PAWN_VALUES_WHITE,
+            &Colour::Black => PAWN_VALUES_BLACK
+        };
+        let opp_pawn_board = match colour {
+            &Colour::White => PAWN_VALUES_BLACK,
+            &Colour::Black => PAWN_VALUES_WHITE
+        }; 
+        self.board
+            .iter()
+            .enumerate()
+            .fold(0, |acc, ele| acc + get_square_val(ele, our_pawn_board, opp_pawn_board))
+    }
 } 
 
 impl fmt::Display for Colour {
@@ -391,6 +477,30 @@ impl fmt::Display for Piece {
                 Kind::Pawn => write!(f, "♙")
             }
         }
+    }
+}
+    
+impl Neg for Colour {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        match self {
+            Colour::Black => Colour::White,
+            Colour::White => Colour::Black
+        }
+    }
+}
+
+fn get_square_val(element: (usize, &SquareVal), our_pawn_board: [u8; 63], opp_pawn_board: [u8; 63]) -> i16 {
+    match element.1 {
+        SquareVal::Piece(piece) => get_piece_val(piece, element.0, our_pawn_board, opp_pawn_board),
+        _ => 0
+    }
+}
+
+fn get_piece_val(piece: &Piece, index: usize, our_pawn_board: [u8; 63], opp_pawn_board: [u8; 63]) -> i16 {
+    match piece.kind {
+        Kind::Knight => KNIGHT_VALUES[index],
+
     }
 }
 
