@@ -13,7 +13,7 @@ use rand::seq::SliceRandom;
 use std::{
     thread,
     io::{ stdin, stdout, Write }, 
-    fmt, ops::Neg
+    fmt, ops::{Neg, Index}
 };
 
 #[derive(Copy, Clone)]
@@ -215,7 +215,7 @@ impl Board {
 
             * get all legal moves for computer
             * get all legal moves for opposition
-            get the board that occurs for every move pair
+            * get the board that occurs for every move pair
             assign a value to each board from our opponents perspective, using some valuation function
             assign s/i as the probability for each choice i of all the choices 0..n-1 we have available. n has prob 1 - SUM(s/i for all i).
             calculate the expected value to our opponent of each of their moves in terms of the n-1 prob. varaibles. This is n equations.
@@ -412,19 +412,19 @@ impl Board {
             })
             .collect()                
     }
-    fn get_value(&self, colour: &Colour) -> i16 {
-        let our_pawn_board = match colour {
-            &Colour::White => PAWN_VALUES_WHITE,
-            &Colour::Black => PAWN_VALUES_BLACK
-        };
-        let opp_pawn_board = match colour {
-            &Colour::White => PAWN_VALUES_BLACK,
-            &Colour::Black => PAWN_VALUES_WHITE
-        }; 
+    fn get_value(&self, colour: &Colour) -> f64 {
+        // let our_pawn_board = match colour {
+        //     &Colour::White => PAWN_VALUES_WHITE,
+        //     &Colour::Black => PAWN_VALUES_BLACK
+        // };
+        // let opp_pawn_board = match colour {
+        //     &Colour::White => PAWN_VALUES_BLACK,
+        //     &Colour::Black => PAWN_VALUES_WHITE
+        // }; 
         self.board
             .iter()
             .enumerate()
-            .fold(0, |acc, ele| acc + get_square_val(ele, our_pawn_board, opp_pawn_board))
+            .fold(0.0, |acc, ele| acc + get_square_val(ele, colour))
     }
 } 
 
@@ -490,17 +490,33 @@ impl Neg for Colour {
     }
 }
 
-fn get_square_val(element: (usize, &SquareVal), our_pawn_board: [u8; 63], opp_pawn_board: [u8; 63]) -> i16 {
+fn get_square_val(element: (usize, &SquareVal), colour: &Colour) -> f64 {
     match element.1 {
-        SquareVal::Piece(piece) => get_piece_val(piece, element.0, our_pawn_board, opp_pawn_board),
-        _ => 0
+        SquareVal::Piece(piece) => get_piece_val(piece, element.0, colour),
+        _ => 0.0
     }
 }
 
-fn get_piece_val(piece: &Piece, index: usize, our_pawn_board: [u8; 63], opp_pawn_board: [u8; 63]) -> i16 {
+fn get_piece_val(piece: &Piece, index: usize, colour: &Colour) -> f64 {
+    let absolute_piece_value = get_absolute_piece_value(piece, index);
+    if piece.colour == *colour {
+        absolute_piece_value
+    } else {
+        absolute_piece_value * (-1 as f64)
+    }
+}
+
+fn get_absolute_piece_value(piece: &Piece, index: usize) -> f64 {
     match piece.kind {
         Kind::Knight => KNIGHT_VALUES[index],
+        Kind::Pawn => get_pawn_val(piece, index)
+    }
+}
 
+fn get_pawn_val(piece: &Piece, index: usize) -> f64 {
+    match piece.colour {
+        Colour::White => PAWN_VALUES_WHITE[index],
+        Colour::Black => PAWN_VALUES_BLACK[index]
     }
 }
 
